@@ -1,0 +1,10 @@
+authentik:
+  secretKey: developer-secret-key
+
+image:
+  tag: dev
+
+ingress:
+  hosts:
+    - host: dev.app.srespace.tech
+

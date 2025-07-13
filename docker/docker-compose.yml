@@ -1,0 +1,141 @@
+version: '3.8'
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  database:
+  redis:
+
+services:
+  postgresql:
+    image: postgres:${PG_VERSION}
+    container_name: ${PG_CONTAINER_NAME}
+    restart: ${RESTART_POLICY}
+    environment:
+      POSTGRES_USER: ${PG_USER}
+      POSTGRES_PASSWORD: ${PG_PASS}
+      POSTGRES_DB: ${PG_DB}
+    ports:
+      - "${PG_PORT}:${PG_PORT}"
+    volumes:
+      - database:/var/lib/postgresql/data
+    healthcheck:
+      test: ${POSTGRES_HEALTHCHECK_CMD}
+      start_period: ${HEALTHCHECK_START_PERIOD}
+      interval: ${HEALTHCHECK_INTERVAL}
+      retries: ${HEALTHCHECK_RETRIES}
+      timeout: ${POSTGRES_HEALTHCHECK_TIMEOUT}
+    env_file:
+      - .env
+    networks:
+      - internal
+
+  redis:
+    image: redis:${REDIS_VERSION}
+    container_name: ${REDIS_CONTAINER_NAME}
+    restart: ${RESTART_POLICY}
+    command: ${REDIS_COMMAND}
+    volumes:
+      - redis:/data
+    healthcheck:
+      test: ${REDIS_HEALTHCHECK_CMD}
+      start_period: ${HEALTHCHECK_START_PERIOD}
+      interval: ${HEALTHCHECK_INTERVAL}
+      retries: ${HEALTHCHECK_RETRIES}
+      timeout: ${REDIS_HEALTHCHECK_TIMEOUT}
+    env_file:
+      - .env
+    networks:
+      - internal
+
+  server:
+    image: ghcr.io/goauthentik/server:${AUTHENTIK_TAG}
+    container_name: ${SERVER_CONTAINER_NAME}
+    restart: ${RESTART_POLICY}
+    command: server
+    environment:
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
+      AUTHENTIK_REDIS__HOST: redis
+      AUTHENTIK_POSTGRESQL__HOST: postgresql
+      AUTHENTIK_POSTGRESQL__USER: ${PG_USER}
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${PG_PASS}
+      AUTHENTIK_POSTGRESQL__NAME: ${PG_DB}
+      AUTHENTIK_POSTGRESQL__PORT: ${PG_PORT}
+      AUTHENTIK_EMAIL__HOST: ${SMTP_HOST}
+      AUTHENTIK_EMAIL__PORT: ${SMTP_PORT}
+      AUTHENTIK_EMAIL__USERNAME: ${SMTP_USER}
+      AUTHENTIK_EMAIL__PASSWORD: ${SMTP_PASS}
+      AUTHENTIK_EMAIL__USE_TLS: ${SMTP_TLS}
+      AUTHENTIK_EMAIL__FROM: ${SMTP_FROM}
+    volumes:
+      - ./media:/media
+      - ./custom-templates:/templates
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    networks:
+      - internal
+
+  worker:
+    image: ghcr.io/goauthentik/server:${AUTHENTIK_TAG}
+    container_name: ${WORKER_CONTAINER_NAME}
+    restart: ${RESTART_POLICY}
+    user: root
+    command: >
+      /bin/bash -c "
+      ak migrate && sleep 10 &&
+      ak shell -c 'exec(open(\"/init/grant-admin-access.py\").read())' &&
+      ak worker"
+    environment:
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
+      AUTHENTIK_REDIS__HOST: redis
+      AUTHENTIK_POSTGRESQL__HOST: postgresql
+      AUTHENTIK_POSTGRESQL__USER: ${PG_USER}
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${PG_PASS}
+      AUTHENTIK_POSTGRESQL__NAME: ${PG_DB}
+      AUTHENTIK_POSTGRESQL__PORT: ${PG_PORT}
+      AUTHENTIK_EMAIL__HOST: ${SMTP_HOST}
+      AUTHENTIK_EMAIL__PORT: ${SMTP_PORT}
+      AUTHENTIK_EMAIL__USERNAME: ${SMTP_USER}
+      AUTHENTIK_EMAIL__PASSWORD: ${SMTP_PASS}
+      AUTHENTIK_EMAIL__USE_TLS: ${SMTP_TLS}
+      AUTHENTIK_EMAIL__FROM: ${SMTP_FROM}
+    volumes:
+      - ./media:/media
+      - ./certs:/certs
+      - ./custom-templates:/templates
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./scripts/grant-admin-access.py:/init/grant-admin-access.py
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    networks:
+      - internal
+
+  nginx:
+    image: nginx:${NGINX_VERSION}
+    container_name: ${NGINX_CONTAINER_NAME}
+    restart: ${RESTART_POLICY}
+    ports:
+      - "${NGINX_PORT_HTTP}:${NGINX_PORT_HTTP}"
+      - "${NGINX_PORT_HTTPS}:${NGINX_PORT_HTTPS}"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    env_file:
+      - .env
+    depends_on:
+      - server
+    networks:
+      - internal
+

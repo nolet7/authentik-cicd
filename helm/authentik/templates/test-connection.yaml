@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "authentik.fullname" . }}-test"
+  labels:
+    {{- include "authentik.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: curl
+      image: curlimages/curl:7.85.0
+      command: ["curl"]
+      args: ["http://{{ include "authentik.fullname" . }}:{{ .Values.service.port }}/"]
+  restartPolicy: Never

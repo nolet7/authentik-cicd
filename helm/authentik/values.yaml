@@ -1,0 +1,46 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/goauthentik/server
+  tag: latest
+  pullPolicy: IfNotPresent
+
+postgres:
+  host: authentik-postgres
+  port: 5432
+  user: authentik
+  db: authentik
+
+redis:
+  host: authentik-redis
+  port: 6379
+
+email:
+  host: postfix
+  port: 587
+  username: admin@srespace.tech
+  useTLS: true
+  from: admin@srespace.tech
+
+authentik:
+  secretKey: vault://kv/data/authentik#secret-key
+
+service:
+  type: ClusterIP
+  port: 9000
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: app.srespace.tech
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: authentik-tls
+      hosts:
+        - app.srespace.tech
+

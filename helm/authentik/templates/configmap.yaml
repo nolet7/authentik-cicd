@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "authentik.fullname" . }}-config
+data:
+  AUTHENTIK_REDIS__HOST: {{ .Values.redis.host }}
+  AUTHENTIK_POSTGRESQL__HOST: {{ .Values.postgres.host }}
+  AUTHENTIK_POSTGRESQL__USER: {{ .Values.postgres.user }}
+  AUTHENTIK_POSTGRESQL__NAME: {{ .Values.postgres.db }}
+  AUTHENTIK_POSTGRESQL__PORT: "{{ .Values.postgres.port }}"
+  AUTHENTIK_EMAIL__HOST: {{ .Values.email.host }}
+  AUTHENTIK_EMAIL__PORT: "{{ .Values.email.port }}"
+  AUTHENTIK_EMAIL__USERNAME: {{ .Values.email.username }}
+  AUTHENTIK_EMAIL__USE_TLS: "{{ .Values.email.useTLS }}"
+  AUTHENTIK_EMAIL__FROM: {{ .Values.email.from }}
+

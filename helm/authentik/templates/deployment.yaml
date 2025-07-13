@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "authentik.fullname" . }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "authentik.fullname" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "authentik.fullname" . }}
+    spec:
+      containers:
+        - name: authentik
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["server"]
+          envFrom:
+            - configMapRef:
+                name: {{ include "authentik.fullname" . }}-config
+          env:
+            - name: AUTHENTIK_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-secret
+                  key: AUTHENTIK_SECRET_KEY
+
+            - name: AUTHENTIK_EMAIL__PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-secret
+                  key: AUTHENTIK_EMAIL__PASSWORD
+
+            - name: AUTHENTIK_POSTGRESQL__PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-secret
+                  key: AUTHENTIK_POSTGRESQL__PASSWORD
+
+          ports:
+            - containerPort: {{ .Values.service.port }}
+
