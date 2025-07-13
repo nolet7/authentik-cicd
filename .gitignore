@@ -1,0 +1,32 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Docker
+*.log
+*.pid
+*.sock
+.env
+.env.*
+
+# Vault
+vault/*.hcl
+vault/token.*
+vault/*.jwt
+
+# Helm/CI
+*.tgz
+*.lock
+
+# Kubernetes
+k8s/*.yaml.bak
+
+# VSCode/IDE
+.vscode/
+.idea/
+*.swp
+
+# Node/npm
+node_modules/
+dist/
